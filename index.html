@@ -47,11 +47,20 @@ input,select{width:100%;font:inherit;padding:10px;border:1px solid var(--line);b
 .act .pri{background:var(--acc);color:var(--onacc);border-color:var(--acc);font-weight:700}
 .act .del{color:var(--dn)}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.tools{flex-wrap:wrap}.tools button{flex:1 1 40%}
+#lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center}
+#lock input{max-width:220px;text-align:center;font-size:1.6rem;letter-spacing:.3em}
+#lock button{border:0;border-radius:10px;padding:12px 28px;font:inherit;font-weight:700;background:var(--acc);color:var(--onacc)}
+#lock .lnk{background:none;color:var(--mute);font-weight:400;text-decoration:underline;padding:6px}
+#reg{position:fixed;inset:0;z-index:110;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center}
+#reg input{max-width:300px;width:100%}
+#reg button{border:0;border-radius:10px;padding:12px 28px;font:inherit;font-weight:700;background:var(--acc);color:var(--onacc)}
 </style>
 </head>
 <body>
 <main>
 <h1>Mera Portfolio</h1>
+<div class="sub" id="uid"></div>
 <div class="tabs" id="tabs"></div>
 <div class="total" id="tot">₹0</div>
 <div class="sub"><span id="inv"></span> <span class="pl" id="pl"></span></div>
@@ -65,6 +74,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <h2>Platform ke hisaab se</h2>
 <div id="plat"></div>
 <div class="tools">
+<button id="pin">App PIN</button>
 <button id="ref">Prices refresh</button>
 <button id="exp">Backup copy</button>
 <button id="imp">Backup restore</button>
@@ -94,13 +104,36 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <label>Buy date (XIRR ke liye)<input id="f_date" type="date"></label>
 <label>Auto price code (optional)<input id="f_code" placeholder="MF: scheme code · Stock: RELIANCE"></label>
 <button type="button" id="b_find" class="chip" style="margin-top:8px">MF ka code naam se dhundhein</button>
+<button type="button" id="b_sfind" class="chip" style="margin-top:8px">Stock ka ticker naam se dhundhein</button>
 <div id="finds" class="sub"></div>
+<div class="two">
+<label>SIP raashi (₹/mahina)<input id="f_sip" type="number" inputmode="decimal" step="any"></label>
+<label>SIP ki date (1-28)<input id="f_sipd" type="number" inputmode="numeric" min="1" max="28"></label>
+</div>
+<div class="sub">SIP bharne par har mahine nayi instalment apne aap judegi (sirf Mutual Fund, code ke saath).</div>
 <div class="act">
 <button id="b_del" class="del" hidden>Delete</button>
 <button id="b_cancel">Cancel</button>
 <button id="b_save" class="pri">Save</button>
 </div>
 </dialog>
+<div id="reg">
+<div style="font-size:1.3rem;font-weight:700">Swagat hai</div>
+<div class="sub">Pehli baar apna naam likhein. Aapko ek Tracker ID milegi.</div>
+<input id="r_f" placeholder="Pehla naam (First name)" autocomplete="given-name">
+<input id="r_l" placeholder="Aakhri naam (Last name)" autocomplete="family-name">
+<div id="r_msg" class="dn" role="alert"></div>
+<button id="r_go">Shuru karein</button>
+<div class="sub" style="max-width:300px">Aapka naam aur Tracker ID app banane wale ko bheje jaate hain. Aapki holdings kahin nahi bheji jaati, wo sirf is phone mein rehti hain.</div>
+</div>
+<div id="lock">
+<div style="font-size:1.3rem;font-weight:700">Mera Portfolio</div>
+<div class="sub">Apna PIN likhein</div>
+<input id="l_in" type="password" inputmode="numeric" maxlength="6" autocomplete="off" aria-label="PIN">
+<div id="l_msg" class="dn" role="alert"></div>
+<button id="l_ok">Kholein</button>
+<button id="l_forgot" class="lnk">PIN bhool gaye?</button>
+</div>
 <dialog id="rdlg">
 <div style="font-weight:700;font-size:1.1rem">Backup restore</div>
 <label>Backup text yahan paste karein<input id="r_txt"></label>
@@ -141,7 +174,7 @@ function render(){
  const hd=items.filter(i=>i.prev>0),dc=hd.reduce((a,i)=>a+i.units*(i.cur-i.prev),0);
  $("dy").innerHTML=hd.length?"Aaj ka P&amp;L "+dpl(dc,hd.reduce((a,i)=>a+i.units*i.prev,0)):"";
  const dated=items.filter(i=>i.date);
- const fl=dated.map(i=>({d:new Date(i.date),a:-cost(i)})).sort((a,b)=>a.d-b.d);
+ const fl=dated.flatMap(i=>{const x=i.sipc||[],b=cost(i)-x.reduce((a,c)=>a+c.a,0);return [{d:new Date(i.date),a:-b},...x.map(c=>({d:new Date(c.d),a:-c.a}))]}).sort((a,b)=>a.d-b.d);
  const x=dated.length?xirr(fl.concat([{d:new Date(),a:dated.reduce((s,i)=>s+val(i),0)}])):null;
  $("xr").textContent=x==null?(items.length?"XIRR ke liye holdings mein buy date daalein":""):"XIRR "+(x*100).toFixed(1)+"% saalana (sirf date wali holdings)";
  const by={};items.forEach(i=>by[i.segment]=(by[i.segment]||0)+val(i));
@@ -162,7 +195,7 @@ function openForm(id){
  $("dtitle").textContent=id?"Holding badlein":"Nayi holding";
  $("f_name").value=i.name||"";$("f_plat").value=i.platform||"";$("f_seg").value=i.segment||(view==="All"?"Mutual Fund":view);
  $("f_units").value=i.units??"";$("f_avg").value=i.avg??"";$("f_cur").value=i.cur??"";
- $("f_date").value=i.date||"";$("f_code").value=i.code||"";$("finds").innerHTML="";
+ $("f_date").value=i.date||"";$("f_code").value=i.code||"";$("finds").innerHTML="";$("f_sip").value=i.sip?i.sip.amt:"";$("f_sipd").value=i.sip?i.sip.day:"";
  if(i.amt){$("f_units").value="";$("f_avg").value="";$("f_cur").value="";$("f_inv").value=i.avg;$("f_cv").value=i.cur}else{$("f_inv").value="";$("f_cv").value=""}
  $("b_del").hidden=!id;$("dlg").showModal();
 }
@@ -172,7 +205,7 @@ $("b_save").onclick=()=>{
  const n=$("f_name").value.trim();let u=parseFloat($("f_units").value),a=parseFloat($("f_avg").value),amt=false;const iv=parseFloat($("f_inv").value),cv=parseFloat($("f_cv").value);if((isNaN(u)||isNaN(a))&&iv>0&&cv>0){u=1;a=iv;amt=true}
  let c=amt?cv:parseFloat($("f_cur").value);if(isNaN(c))c=a;
  if(!n||isNaN(u)||isNaN(a)){alert("Naam ke saath units + avg price, ya Invested + Current value daalein.");return}
- const o={id:editId||Date.now(),name:n,platform:$("f_plat").value.trim(),segment:$("f_seg").value,units:u,avg:a,cur:c,date:$("f_date").value,code:$("f_code").value.trim(),upd:(items.find(x=>x.id===editId)||{}).upd,amt:amt};
+ const o={id:editId||Date.now(),name:n,platform:$("f_plat").value.trim(),segment:$("f_seg").value,units:u,avg:a,cur:c,date:$("f_date").value,code:$("f_code").value.trim(),upd:(items.find(x=>x.id===editId)||{}).upd,amt:amt,sip:mkSip(editId),sipc:(items.find(x=>x.id===editId)||{}).sipc};
  items=editId?items.map(x=>x.id===editId?o:x):[...items,o];
  save();render();$("dlg").close();refreshPrices();
 };
@@ -186,7 +219,7 @@ $("r_cancel").onclick=()=>$("rdlg").close();
 $("r_ok").onclick=()=>{try{const d=JSON.parse($("r_txt").value);if(!Array.isArray(d))throw 0;items=d;save();render();$("rdlg").close()}catch(e){alert("Ye valid backup nahi hai.")}};
 const tmo=u=>{const c=new AbortController();setTimeout(()=>c.abort(),9000);return fetch(u,{signal:c.signal}).then(r=>{if(!r.ok)throw 0;return r.json()})};
 async function getPrice(i){
- if(i.segment==="Mutual Fund"){const d=await tmo("https://api.mfapi.in/mf/"+encodeURIComponent(i.code));const n=parseFloat(d.data[0].nav);if(!(n>0))throw 0;return [n,d.data[0].date,d.data[1]?parseFloat(d.data[1].nav):0]}
+ if(i.segment==="Mutual Fund"){const d=await tmo("https://api.mfapi.in/mf/"+encodeURIComponent(i.code));const n=parseFloat(d.data[0].nav);if(!(n>0))throw 0;return [n,d.data[0].date,d.data[1]?parseFloat(d.data[1].nav):0,d.data]}
  if(i.segment==="Stock/ETF"){const s=/\.(NS|BO)$/i.test(i.code)?i.code:i.code+".NS";const d=await tmo("https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(s)+"?interval=1d&range=1d");const m=d.chart.result[0].meta,n=m.regularMarketPrice;if(!(n>0))throw 0;return [n,new Date().toLocaleDateString("en-IN"),m.previousClose||m.chartPreviousClose||0]}
  throw 0;
 }
@@ -196,7 +229,7 @@ async function refreshPrices(){
  const list=items.filter(i=>i.code&&(i.segment==="Mutual Fund"||(i.segment==="Stock/ETF"&&!i.amt)));
  if(!list.length){$("st").textContent="";return}
  busy=true;$("st").textContent="Prices update ho rahe hain…";let ok=0,bad=0;
- await Promise.all(list.map(async i=>{try{const [p,dt,pv]=await getPrice(i);if(i.amt){const inv=i.avg*i.units;i.units=i.cur/p;i.avg=inv/i.units;delete i.amt}i.cur=p;i.upd=dt;if(pv>0)i.prev=pv;ok++}catch(e){bad++}}));
+ await Promise.all(list.map(async i=>{try{const [p,dt,pv,h]=await getPrice(i);if(i.amt){const inv=i.avg*i.units;i.units=i.cur/p;i.avg=inv/i.units;delete i.amt}i.cur=p;i.upd=dt;if(pv>0)i.prev=pv;if(h)applySip(i,h);ok++}catch(e){bad++}}));
  busy=false;save();render();
  $("st").textContent="Auto prices: "+ok+" update"+(bad?", "+bad+" nahi hue (purana price dikh raha hai)":"")+" · "+new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
 }
@@ -208,9 +241,87 @@ $("b_find").onclick=async()=>{
   $("finds").innerHTML=r.length?r.slice(0,8).map(x=>`<button type="button" class="row" data-c="${x.schemeCode}" style="border-radius:8px;margin-top:6px"><b>${esc(x.schemeName)}</b></button>`).join(""):"Kuch nahi mila. Naam chhota karke try karein.";
  }catch(e){$("finds").textContent="Search nahi ho paayi. Internet check karein."}
 };
-$("finds").onclick=e=>{const b=e.target.closest("[data-c]");if(b){$("f_code").value=b.dataset.c;$("f_seg").value="Mutual Fund";$("finds").textContent="Code set ho gaya: "+b.dataset.c}};
+$("finds").onclick=e=>{const b=e.target.closest("[data-c],[data-s]");if(!b)return;if(b.dataset.c){$("f_code").value=b.dataset.c;$("f_seg").value="Mutual Fund";$("finds").textContent="Code set ho gaya: "+b.dataset.c}else{$("f_code").value=b.dataset.s;$("f_seg").value="Stock/ETF";$("finds").textContent="Ticker set ho gaya: "+b.dataset.s}};
+const mkSip=id=>{
+ const a=parseFloat($("f_sip").value),d=Math.min(28,Math.max(1,parseInt($("f_sipd").value)||1));
+ if(!(a>0))return null;
+ const old=(items.find(x=>x.id===id)||{}).sip;
+ if(old&&old.amt===a&&old.day===d)return old;
+ const t=new Date(),ym=t.getFullYear()*12+t.getMonth();
+ return {amt:a,day:d,last:t.getDate()>=d?ym:ym-1};
+};
+function applySip(i,h){
+ const s=i.sip;if(!s||!(s.amt>0)||!i.code||i.amt)return;
+ const t=new Date(),now=t.getFullYear()*12+t.getMonth();
+ const pd=x=>{const [d,m,y]=x.date.split("-").map(Number);return new Date(y,m-1,d)};
+ for(let m=s.last+1;m<=now;m++){
+  const when=new Date(Math.floor(m/12),m%12,s.day);if(when>t)break;
+  let row=null;for(let k=h.length-1;k>=0;k--){if(pd(h[k])>=when){row=h[k];break}}
+  if(!row)break;
+  const nav=parseFloat(row.nav);if(!(nav>0))break;
+  const tot=i.units+s.amt/nav;
+  i.avg=(i.avg*i.units+s.amt)/tot;i.units=tot;
+  (i.sipc=i.sipc||[]).push({d:row.date.split("-").reverse().join("-"),a:s.amt});
+  s.last=m;
+ }
+}
+$("b_sfind").onclick=async()=>{
+ const q=$("f_name").value.trim();
+ if(!q){alert("Pehle upar naam likhein, jaise Reliance");return}
+ $("finds").textContent="Dhundh rahe hain…";
+ try{const r=await tmo("https://query1.finance.yahoo.com/v1/finance/search?q="+encodeURIComponent(q)+"&quotesCount=10&newsCount=0");
+  const l=(r.quotes||[]).filter(x=>/\.(NS|BO)$/.test(x.symbol||"")).slice(0,8);
+  $("finds").innerHTML=l.length?l.map(x=>`<button type="button" class="row" data-s="${esc(x.symbol)}" style="border-radius:8px;margin-top:6px"><b>${esc(x.shortname||x.longname||x.symbol)}</b> <span class="sub">${esc(x.symbol)}</span></button>`).join(""):"Kuch nahi mila. Ticker khud likh sakte hain, jaise RELIANCE.";
+ }catch(e){$("finds").textContent="Search nahi ho paayi. Ticker khud likhein, jaise RELIANCE."}
+};
 $("ref").onclick=refreshPrices;
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshPrices()});
+const enc=new TextEncoder();
+const hashPin=async(p,s)=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(s+p)))].map(b=>b.toString(16).padStart(2,"0")).join("");
+const getPin=()=>{try{return JSON.parse(localStorage.getItem("pfpin")||"null")}catch(e){return null}};
+let fails=0,until=0,hiddenAt=0;
+function showLock(){$("lock").style.display="flex";$("l_in").value="";$("l_msg").textContent=""}
+$("l_ok").onclick=async()=>{
+ const p=getPin();if(!p){$("lock").style.display="none";return}
+ if(Date.now()<until){$("l_msg").textContent="Thodi der baad try karein.";return}
+ if(await hashPin($("l_in").value,p.s)===p.h){fails=0;$("lock").style.display="none"}
+ else{fails++;$("l_in").value="";if(fails>=5){until=Date.now()+30000;fails=0;$("l_msg").textContent="5 galat try. 30 second ruko."}else $("l_msg").textContent="Galat PIN."}
+};
+$("l_in").onkeydown=e=>{if(e.key==="Enter")$("l_ok").click()};
+$("l_forgot").onclick=()=>{if(confirm("PIN bhool gaye? Reset karne par is phone ka saara portfolio data mit jayega (backup se wapas la sakte hain). Reset karein?")){try{localStorage.removeItem("pf");localStorage.removeItem("pfpin")}catch(e){}location.reload()}};
+$("pin").onclick=async()=>{
+ const p=getPin();
+ if(p){const c=prompt("Abhi ka PIN likhein:");if(c===null)return;if(await hashPin(c,p.s)!==p.h){alert("Galat PIN.");return}}
+ const n=prompt("Naya PIN likhein (4-6 ank). Khaali chhodne par PIN hat jayega:");
+ if(n===null)return;
+ if(n===""){try{localStorage.removeItem("pfpin")}catch(e){}alert("PIN hat gaya.");return}
+ if(!/^\d{4,6}$/.test(n)){alert("PIN 4 se 6 ank ka hona chahiye.");return}
+ const s=Math.random().toString(36).slice(2);
+ try{localStorage.setItem("pfpin",JSON.stringify({s,h:await hashPin(n,s)}));alert("PIN set ho gaya.")}catch(e){alert("PIN save nahi hua.")}
+};
+document.addEventListener("visibilitychange",()=>{if(document.hidden)hiddenAt=Date.now();else if(getPin()&&hiddenAt&&Date.now()-hiddenAt>60000)showLock()});
+const CFG={url:"",f:"",l:"",i:""};
+const getUser=()=>{try{return JSON.parse(localStorage.getItem("pfuser")||"null")}catch(e){return null}};
+const putUser=u=>{try{localStorage.setItem("pfuser",JSON.stringify(u))}catch(e){}};
+function mkId(f,l){
+ const A="ABCDEFGHIJKLMNOPQRSTUVWXYZ",r=n=>crypto.getRandomValues(new Uint32Array(1))[0]%n;
+ const c=x=>{const u=((x||"").trim()[0]||"").toUpperCase();return u&&A.includes(u)?u:A[r(26)]};
+ let d="";for(let k=0;k<5;k++)d+=r(10);
+ return c(f)+c(l)+A[r(26)]+d;
+}
+async function sendUser(){
+ const u=getUser();if(!u||u.sent||!CFG.url)return;
+ try{await fetch(CFG.url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({[CFG.f]:u.f,[CFG.l]:u.l,[CFG.i]:u.id})});u.sent=true;putUser(u)}catch(e){}
+}
+function showUser(){const u=getUser();$("uid").textContent=u?u.f+" "+u.l+" · Tracker ID: "+u.id:""}
+$("r_go").onclick=()=>{
+ const f=$("r_f").value.trim(),l=$("r_l").value.trim();
+ if(!f||!l){$("r_msg").textContent="Pehla aur aakhri naam dono likhein.";return}
+ putUser({f,l,id:mkId(f,l),sent:false});
+ $("reg").style.display="none";showUser();sendUser();if(getPin())showLock();
+};
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)sendUser()});
+if(!getUser())$("reg").style.display="flex";else{showUser();sendUser();if(getPin())showLock()}
 render();
 refreshPrices();
 if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}

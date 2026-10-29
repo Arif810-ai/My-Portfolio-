@@ -55,6 +55,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div class="tabs" id="tabs"></div>
 <div class="total" id="tot">₹0</div>
 <div class="sub"><span id="inv"></span> <span class="pl" id="pl"></span></div>
+<div class="sub" id="dy"></div>
 <div class="sub" id="xr"></div>
 <div class="sub" id="st"></div>
 <div class="bar" id="bar"></div>
@@ -83,6 +84,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div class="two">
 <label>Units / quantity<input id="f_units" type="number" inputmode="decimal" step="any"></label>
 <label>Avg buy price (₹)<input id="f_avg" type="number" inputmode="decimal" step="any"></label>
+</div>
+<div class="sub" style="margin-top:10px">Units pata nahi? Neeche Invested aur Current value daalein, jaise Upstox/Groww mein dikhta hai.</div>
+<div class="two">
+<label>Invested (₹)<input id="f_inv" type="number" inputmode="decimal" step="any"></label>
+<label>Current value (₹)<input id="f_cv" type="number" inputmode="decimal" step="any"></label>
 </div>
 <label>Current price / NAV (₹)<input id="f_cur" type="number" inputmode="decimal" step="any"></label>
 <label>Buy date (XIRR ke liye)<input id="f_date" type="date"></label>
@@ -131,6 +137,9 @@ function render(){
  $("tot").textContent=inr(V);
  $("inv").textContent=items.length?"Invested "+inr(C):"Abhi koi holding nahi";
  $("pl").innerHTML=items.length?pltxt(V,C):"";
+ const dpl=(d,b)=>`<span class="${d>=0?'up':'dn'}">${d>=0?'+':'−'}${inr(Math.abs(d))}${b?` (${(Math.abs(d)/b*100).toFixed(2)}%)`:""}</span>`;
+ const hd=items.filter(i=>i.prev>0),dc=hd.reduce((a,i)=>a+i.units*(i.cur-i.prev),0);
+ $("dy").innerHTML=hd.length?"Aaj ka P&amp;L "+dpl(dc,hd.reduce((a,i)=>a+i.units*i.prev,0)):"";
  const dated=items.filter(i=>i.date);
  const fl=dated.map(i=>({d:new Date(i.date),a:-cost(i)})).sort((a,b)=>a.d-b.d);
  const x=dated.length?xirr(fl.concat([{d:new Date(),a:dated.reduce((s,i)=>s+val(i),0)}])):null;
@@ -142,7 +151,7 @@ function render(){
  $("chips").innerHTML=["All",...segs].map(s=>`<button class="chip" aria-pressed="${s===filter}" data-f="${s}">${s}</button>`).join("");
  if(filter!=="All"&&!by[filter])filter="All";
  const rows=items.filter(i=>filter==="All"||i.segment===filter).sort((a,b)=>val(b)-val(a));
- $("list").innerHTML=rows.length?rows.map(i=>`<button class="row" data-id="${i.id}"><div><b>${esc(i.name)}</b><div class="sub">${esc(i.platform)} · ${i.segment}${i.code?" · auto":""}</div></div><div class="r"><b>${inr(val(i))}</b><div class="sub">${pltxt(val(i),cost(i))}</div></div></button>`).join(""):`<div class="empty">Neeche "+ Holding jodein" dabakar pehli holding add karein.</div>`;
+ $("list").innerHTML=rows.length?rows.map(i=>`<button class="row" data-id="${i.id}"><div><b>${esc(i.name)}</b><div class="sub">${i.units} ${i.segment==="Stock/ETF"?"shares":"units"} · ${esc(i.platform)}${i.code?" · auto":""}</div></div><div class="r"><b>${inr(val(i))}</b> <span class="sub">(${inr(cost(i))})</span><div class="sub">${pltxt(val(i),cost(i))}${i.prev>0?` · 1D ${dpl(i.units*(i.cur-i.prev))}`:""}</div></div></button>`).join(""):`<div class="empty">Neeche "+ Holding jodein" dabakar pehli holding add karein.</div>`;
  const pb={};items.forEach(i=>{const k=i.platform||"—";(pb[k]=pb[k]||{v:0,c:0});pb[k].v+=val(i);pb[k].c+=cost(i)});
  const pk=Object.keys(pb).sort((a,b)=>pb[b].v-pb[a].v);
  $("plat").innerHTML=pk.length?pk.map(k=>`<div class="row" style="cursor:default"><div><b>${esc(k)}</b></div><div class="r"><b>${inr(pb[k].v)}</b><div class="sub">${pltxt(pb[k].v,pb[k].c)}</div></div></div>`).join(""):`<div class="empty">Yahan platform-wise total dikhega.</div>`;
@@ -154,15 +163,16 @@ function openForm(id){
  $("f_name").value=i.name||"";$("f_plat").value=i.platform||"";$("f_seg").value=i.segment||(view==="All"?"Mutual Fund":view);
  $("f_units").value=i.units??"";$("f_avg").value=i.avg??"";$("f_cur").value=i.cur??"";
  $("f_date").value=i.date||"";$("f_code").value=i.code||"";$("finds").innerHTML="";
+ if(i.amt){$("f_units").value="";$("f_avg").value="";$("f_cur").value="";$("f_inv").value=i.avg;$("f_cv").value=i.cur}else{$("f_inv").value="";$("f_cv").value=""}
  $("b_del").hidden=!id;$("dlg").showModal();
 }
 $("add").onclick=()=>openForm(null);
 $("b_cancel").onclick=()=>$("dlg").close();
 $("b_save").onclick=()=>{
- const n=$("f_name").value.trim(),u=parseFloat($("f_units").value),a=parseFloat($("f_avg").value);
- let c=parseFloat($("f_cur").value);if(isNaN(c))c=a;
- if(!n||isNaN(u)||isNaN(a)){alert("Naam, units aur avg price zaroori hain.");return}
- const o={id:editId||Date.now(),name:n,platform:$("f_plat").value.trim(),segment:$("f_seg").value,units:u,avg:a,cur:c,date:$("f_date").value,code:$("f_code").value.trim(),upd:(items.find(x=>x.id===editId)||{}).upd};
+ const n=$("f_name").value.trim();let u=parseFloat($("f_units").value),a=parseFloat($("f_avg").value),amt=false;const iv=parseFloat($("f_inv").value),cv=parseFloat($("f_cv").value);if((isNaN(u)||isNaN(a))&&iv>0&&cv>0){u=1;a=iv;amt=true}
+ let c=amt?cv:parseFloat($("f_cur").value);if(isNaN(c))c=a;
+ if(!n||isNaN(u)||isNaN(a)){alert("Naam ke saath units + avg price, ya Invested + Current value daalein.");return}
+ const o={id:editId||Date.now(),name:n,platform:$("f_plat").value.trim(),segment:$("f_seg").value,units:u,avg:a,cur:c,date:$("f_date").value,code:$("f_code").value.trim(),upd:(items.find(x=>x.id===editId)||{}).upd,amt:amt};
  items=editId?items.map(x=>x.id===editId?o:x):[...items,o];
  save();render();$("dlg").close();refreshPrices();
 };
@@ -176,17 +186,17 @@ $("r_cancel").onclick=()=>$("rdlg").close();
 $("r_ok").onclick=()=>{try{const d=JSON.parse($("r_txt").value);if(!Array.isArray(d))throw 0;items=d;save();render();$("rdlg").close()}catch(e){alert("Ye valid backup nahi hai.")}};
 const tmo=u=>{const c=new AbortController();setTimeout(()=>c.abort(),9000);return fetch(u,{signal:c.signal}).then(r=>{if(!r.ok)throw 0;return r.json()})};
 async function getPrice(i){
- if(i.segment==="Mutual Fund"){const d=await tmo("https://api.mfapi.in/mf/"+encodeURIComponent(i.code)+"/latest");const n=parseFloat(d.data[0].nav);if(!(n>0))throw 0;return [n,d.data[0].date]}
- if(i.segment==="Stock/ETF"){const s=/\.(NS|BO)$/i.test(i.code)?i.code:i.code+".NS";const d=await tmo("https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(s)+"?interval=1d&range=1d");const n=d.chart.result[0].meta.regularMarketPrice;if(!(n>0))throw 0;return [n,new Date().toLocaleDateString("en-IN")]}
+ if(i.segment==="Mutual Fund"){const d=await tmo("https://api.mfapi.in/mf/"+encodeURIComponent(i.code));const n=parseFloat(d.data[0].nav);if(!(n>0))throw 0;return [n,d.data[0].date,d.data[1]?parseFloat(d.data[1].nav):0]}
+ if(i.segment==="Stock/ETF"){const s=/\.(NS|BO)$/i.test(i.code)?i.code:i.code+".NS";const d=await tmo("https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(s)+"?interval=1d&range=1d");const m=d.chart.result[0].meta,n=m.regularMarketPrice;if(!(n>0))throw 0;return [n,new Date().toLocaleDateString("en-IN"),m.previousClose||m.chartPreviousClose||0]}
  throw 0;
 }
 let busy=false;
 async function refreshPrices(){
  if(busy)return;
- const list=items.filter(i=>i.code&&(i.segment==="Mutual Fund"||i.segment==="Stock/ETF"));
+ const list=items.filter(i=>i.code&&(i.segment==="Mutual Fund"||(i.segment==="Stock/ETF"&&!i.amt)));
  if(!list.length){$("st").textContent="";return}
  busy=true;$("st").textContent="Prices update ho rahe hain…";let ok=0,bad=0;
- await Promise.all(list.map(async i=>{try{const [p,dt]=await getPrice(i);i.cur=p;i.upd=dt;ok++}catch(e){bad++}}));
+ await Promise.all(list.map(async i=>{try{const [p,dt,pv]=await getPrice(i);if(i.amt){const inv=i.avg*i.units;i.units=i.cur/p;i.avg=inv/i.units;delete i.amt}i.cur=p;i.upd=dt;if(pv>0)i.prev=pv;ok++}catch(e){bad++}}));
  busy=false;save();render();
  $("st").textContent="Auto prices: "+ok+" update"+(bad?", "+bad+" nahi hue (purana price dikh raha hai)":"")+" · "+new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
 }

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mera Portfolio</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213d">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#eef2f6;--card:#fff;--ink:#14213d;--mute:#5d6b82;--line:#d9e0ea;--up:#0b7a4b;--dn:#b3261e;--acc:#14213d;--onacc:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1522;--card:#17202f;--ink:#e8edf5;--mute:#93a1b8;--line:#27344a;--up:#4cc38a;--dn:#ff8a80;--acc:#e8edf5;--onacc:#0e1522}}
+:root[data-theme="dark"]{--bg:#0e1522;--card:#17202f;--ink:#e8edf5;--mute:#93a1b8;--line:#27344a;--up:#4cc38a;--dn:#ff8a80;--acc:#e8edf5;--onacc:#0e1522}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Hind,system-ui,sans-serif;font-size:16px;line-height:1.4}
+main{max-width:560px;margin:0 auto;padding:16px 16px 96px}
+h1{font-size:1.1rem;font-weight:500;color:var(--mute);margin:8px 0 0}
+.total{font-size:2.6rem;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.pl{font-weight:500}.up{color:var(--up)}.dn{color:var(--dn)}
+.sub{color:var(--mute);font-size:.9rem}
+.bar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:16px 0 8px;background:var(--line)}
+.leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.88rem}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+.chips{display:flex;gap:8px;overflow-x:auto;margin:18px 0 10px;padding-bottom:4px}
+.tabs{display:flex;gap:8px;margin:12px 0 4px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:20px;padding:6px 14px;font:inherit;white-space:nowrap}
+.chip[aria-pressed=true]{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
+.row{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;background:var(--card);border:0;border-bottom:1px solid var(--line);padding:12px 14px;font:inherit;color:inherit}
+.row:first-of-type{border-radius:12px 12px 0 0}.row:last-of-type{border-radius:0 0 12px 12px;border-bottom:0}.row:only-of-type{border-radius:12px}
+.row b{font-weight:500}.r{text-align:right;white-space:nowrap}
+h2{font-size:1rem;font-weight:700;margin:24px 0 8px}
+.empty{background:var(--card);border-radius:12px;padding:22px;text-align:center;color:var(--mute)}
+.fab{position:fixed;right:max(16px,calc(50% - 264px));bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--acc);color:var(--onacc);border:0;border-radius:28px;padding:14px 22px;font:inherit;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.tools{display:flex;gap:10px;margin-top:24px}
+.tools button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:10px;font:inherit}
+dialog{border:0;border-radius:16px;padding:18px;width:min(92vw,420px);background:var(--card);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+label{display:block;font-size:.85rem;color:var(--mute);margin-top:10px}
+input,select{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.act{display:flex;gap:10px;margin-top:16px}
+.act button{flex:1;padding:12px;border-radius:10px;border:1px solid var(--line);font:inherit;background:var(--card);color:var(--ink)}
+.act .pri{background:var(--acc);color:var(--onacc);border-color:var(--acc);font-weight:700}
+.act .del{color:var(--dn)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+<h1>Mera Portfolio</h1>
+<div class="tabs" id="tabs"></div>
+<div class="total" id="tot">₹0</div>
+<div class="sub"><span id="inv"></span> <span class="pl" id="pl"></span></div>
+<div class="sub" id="xr"></div>
+<div class="bar" id="bar"></div>
+<div class="leg" id="leg"></div>
+<div class="chips" id="chips"></div>
+<div id="list"></div>
+<h2>Platform ke hisaab se</h2>
+<div id="plat"></div>
+<div class="tools">
+<button id="exp">Backup copy</button>
+<button id="imp">Backup restore</button>
+</div>
+<p class="sub">Data sirf is phone ke browser mein save hota hai. Current price aapko khud update karna hai (mahine mein ek baar kaafi hai).</p>
+</main>
+<button class="fab" id="add">+ Holding jodein</button>
+
+<dialog id="dlg">
+<div id="dtitle" style="font-weight:700;font-size:1.1rem">Nayi holding</div>
+<label>Naam<input id="f_name" placeholder="e.g. Nifty 50 Index Fund"></label>
+<div class="two">
+<label>Platform<input id="f_plat" list="pl_list" placeholder="e.g. Groww"></label>
+<label>Segment<select id="f_seg"></select></label>
+</div>
+<datalist id="pl_list"></datalist>
+<div class="two">
+<label>Units / quantity<input id="f_units" type="number" inputmode="decimal" step="any"></label>
+<label>Avg buy price (₹)<input id="f_avg" type="number" inputmode="decimal" step="any"></label>
+</div>
+<label>Current price / NAV (₹)<input id="f_cur" type="number" inputmode="decimal" step="any"></label>
+<label>Buy date (XIRR ke liye)<input id="f_date" type="date"></label>
+<div class="act">
+<button id="b_del" class="del" hidden>Delete</button>
+<button id="b_cancel">Cancel</button>
+<button id="b_save" class="pri">Save</button>
+</div>
+</dialog>
+<dialog id="rdlg">
+<div style="font-weight:700;font-size:1.1rem">Backup restore</div>
+<label>Backup text yahan paste karein<input id="r_txt"></label>
+<div class="act"><button id="r_cancel">Cancel</button><button id="r_ok" class="pri">Restore</button></div>
+</dialog>
+
+<script>
+const SEG={"Mutual Fund":"#3a6ea5","Stock/ETF":"#2a9d8f","Gold":"#d4a017","FD/PPF/NPS":"#7b5ea7","Crypto":"#e07a5f","Other":"#8a94a6"};
+const $=id=>document.getElementById(id);
+let items=[],filter="All",view="All",editId=null;
+const scoped=()=>items.filter(i=>view==="All"||i.segment===view);
+try{items=JSON.parse(localStorage.getItem("pf")||"[]")}catch(e){items=[]}
+const save=()=>{try{localStorage.setItem("pf",JSON.stringify(items))}catch(e){}};
+const inr=n=>"₹"+Math.round(n).toLocaleString("en-IN");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const val=i=>i.units*i.cur, cost=i=>i.units*i.avg;
+const pct=(a,b)=>b?((a-b)/b*100):0;
+const pltxt=(v,c)=>{const d=v-c;return `<span class="${d>=0?'up':'dn'}">${d>=0?'+':'−'}${inr(Math.abs(d))} (${pct(v,c).toFixed(1)}%)</span>`};
+$("f_seg").innerHTML=Object.keys(SEG).map(s=>`<option>${s}</option>`).join("");
+
+function xirr(fl){
+ if(fl.length<2)return null;
+ const t0=fl[0].d,f=r=>fl.reduce((s,x)=>s+x.a/Math.pow(1+r,(x.d-t0)/31557600000),0);
+ let lo=-0.99,hi=20;if(f(lo)*f(hi)>0)return null;
+ for(let k=0;k<200;k++){const m=(lo+hi)/2;if(f(lo)*f(m)<=0)hi=m;else lo=m}
+ return (lo+hi)/2;
+}
+function render(){
+ const items=scoped();
+ if(view!=="All")filter="All";
+ $("tabs").innerHTML=[["All","Sab"],["Stock/ETF","Stocks"],["Mutual Fund","Mutual Funds"]].map(([v,l])=>`<button class="chip" aria-pressed="${v===view}" data-v="${v}">${l}</button>`).join("");
+ $("chips").style.display=view==="All"?"":"none";
+ const V=items.reduce((a,i)=>a+val(i),0),C=items.reduce((a,i)=>a+cost(i),0);
+ $("tot").textContent=inr(V);
+ $("inv").textContent=items.length?"Invested "+inr(C):"Abhi koi holding nahi";
+ $("pl").innerHTML=items.length?pltxt(V,C):"";
+ const dated=items.filter(i=>i.date);
+ const fl=dated.map(i=>({d:new Date(i.date),a:-cost(i)})).sort((a,b)=>a.d-b.d);
+ const x=dated.length?xirr(fl.concat([{d:new Date(),a:dated.reduce((s,i)=>s+val(i),0)}])):null;
+ $("xr").textContent=x==null?(items.length?"XIRR ke liye holdings mein buy date daalein":""):"XIRR "+(x*100).toFixed(1)+"% saalana (sirf date wali holdings)";
+ const by={};items.forEach(i=>by[i.segment]=(by[i.segment]||0)+val(i));
+ const segs=Object.keys(by).sort((a,b)=>by[b]-by[a]);
+ $("bar").innerHTML=segs.map(s=>`<div style="width:${V?by[s]/V*100:0}%;background:${SEG[s]}"></div>`).join("");
+ $("leg").innerHTML=segs.map(s=>`<span><i style="background:${SEG[s]}"></i>${s} ${(by[s]/V*100).toFixed(0)}%</span>`).join("");
+ $("chips").innerHTML=["All",...segs].map(s=>`<button class="chip" aria-pressed="${s===filter}" data-f="${s}">${s}</button>`).join("");
+ if(filter!=="All"&&!by[filter])filter="All";
+ const rows=items.filter(i=>filter==="All"||i.segment===filter).sort((a,b)=>val(b)-val(a));
+ $("list").innerHTML=rows.length?rows.map(i=>`<button class="row" data-id="${i.id}"><div><b>${esc(i.name)}</b><div class="sub">${esc(i.platform)} · ${i.segment}</div></div><div class="r"><b>${inr(val(i))}</b><div class="sub">${pltxt(val(i),cost(i))}</div></div></button>`).join(""):`<div class="empty">Neeche "+ Holding jodein" dabakar pehli holding add karein.</div>`;
+ const pb={};items.forEach(i=>{const k=i.platform||"—";(pb[k]=pb[k]||{v:0,c:0});pb[k].v+=val(i);pb[k].c+=cost(i)});
+ const pk=Object.keys(pb).sort((a,b)=>pb[b].v-pb[a].v);
+ $("plat").innerHTML=pk.length?pk.map(k=>`<div class="row" style="cursor:default"><div><b>${esc(k)}</b></div><div class="r"><b>${inr(pb[k].v)}</b><div class="sub">${pltxt(pb[k].v,pb[k].c)}</div></div></div>`).join(""):`<div class="empty">Yahan platform-wise total dikhega.</div>`;
+ $("pl_list").innerHTML=[...new Set(items.map(i=>i.platform))].map(p=>`<option value="${esc(p)}">`).join("");
+}
+function openForm(id){
+ editId=id;const i=items.find(x=>x.id===id)||{};
+ $("dtitle").textContent=id?"Holding badlein":"Nayi holding";
+ $("f_name").value=i.name||"";$("f_plat").value=i.platform||"";$("f_seg").value=i.segment||(view==="All"?"Mutual Fund":view);
+ $("f_units").value=i.units??"";$("f_avg").value=i.avg??"";$("f_cur").value=i.cur??"";
+ $("f_date").value=i.date||"";
+ $("b_del").hidden=!id;$("dlg").showModal();
+}
+$("add").onclick=()=>openForm(null);
+$("b_cancel").onclick=()=>$("dlg").close();
+$("b_save").onclick=()=>{
+ const n=$("f_name").value.trim(),u=parseFloat($("f_units").value),a=parseFloat($("f_avg").value);
+ let c=parseFloat($("f_cur").value);if(isNaN(c))c=a;
+ if(!n||isNaN(u)||isNaN(a)){alert("Naam, units aur avg price zaroori hain.");return}
+ const o={id:editId||Date.now(),name:n,platform:$("f_plat").value.trim(),segment:$("f_seg").value,units:u,avg:a,cur:c,date:$("f_date").value};
+ items=editId?items.map(x=>x.id===editId?o:x):[...items,o];
+ save();render();$("dlg").close();
+};
+$("b_del").onclick=()=>{if(confirm("Ye holding delete karein?")){items=items.filter(x=>x.id!==editId);save();render();$("dlg").close()}};
+$("list").onclick=e=>{const b=e.target.closest("[data-id]");if(b)openForm(+b.dataset.id)};
+$("chips").onclick=e=>{const b=e.target.closest("[data-f]");if(b){filter=b.dataset.f;render()}};
+$("tabs").onclick=e=>{const b=e.target.closest("[data-v]");if(b){view=b.dataset.v;filter="All";render()}};
+$("exp").onclick=async()=>{const t=JSON.stringify(items);try{await navigator.clipboard.writeText(t);alert("Backup copy ho gaya. Kisi note mein paste karke rakh lein.")}catch(e){prompt("Ye text copy karein:",t)}};
+$("imp").onclick=()=>{$("r_txt").value="";$("rdlg").showModal()};
+$("r_cancel").onclick=()=>$("rdlg").close();
+$("r_ok").onclick=()=>{try{const d=JSON.parse($("r_txt").value);if(!Array.isArray(d))throw 0;items=d;save();render();$("rdlg").close()}catch(e){alert("Ye valid backup nahi hai.")}};
+render();
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+</script>
+</body>
+</html>

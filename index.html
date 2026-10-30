@@ -226,7 +226,7 @@ const tmo=(u,ms)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||
 const why=e=>typeof e==="string"?e:e&&e.name==="AbortError"?"timeout":e instanceof TypeError?"network/CORS block":"error";
 const proxy=()=>{try{return(localStorage.getItem("pfproxy")||"").replace(/\/+$/,"")}catch(e){return""}};
 async function getPrice(i){
- if(i.segment==="Mutual Fund"){const b="https://api.mfapi.in/mf/"+encodeURIComponent(i.code.trim()),d=await tmo(b+"/latest");const n=parseFloat(d.data[0].nav);if(!(n>0))throw "NAV nahi mila";let pv=0,h=null;try{h=(await tmo(b,30000)).data;pv=h[1]?parseFloat(h[1].nav):0}catch(e){}return [n,d.data[0].date,pv,h]}
+ if(i.segment==="Mutual Fund"){const c=encodeURIComponent(i.code.trim()),px=proxy(),d=await tmo(px?px+"?m="+c:"https://api.mfapi.in/mf/"+c+"/latest");const n=parseFloat(d.data[0].nav);if(!(n>0))throw "NAV nahi mila";let pv=0,h=null;try{h=(await tmo(px?px+"?mh="+c:"https://api.mfapi.in/mf/"+c,30000)).data;pv=h[1]?parseFloat(h[1].nav):0}catch(e){}return [n,d.data[0].date,pv,h]}
  if(i.segment==="Stock/ETF"){if(/\s/.test(i.code.trim()))throw "ticker galat (naam nahi, jaise RELIANCE)";const s=/\.(NS|BO)$/i.test(i.code)?i.code:i.code+".NS";const d=await tmo(proxy()?proxy()+"?s="+encodeURIComponent(s):"https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(s)+"?interval=1d&range=1d");const m=d.chart.result[0].meta,n=m.regularMarketPrice;if(!(n>0))throw 0;return [n,new Date().toLocaleDateString("en-IN"),m.previousClose||m.chartPreviousClose||0]}
  throw 0;
 }
@@ -244,7 +244,7 @@ $("b_find").onclick=async()=>{
  const q=$("f_name").value.trim();
  if(!q){alert("Pehle upar naam likhein, jaise HDFC Flexi Cap");return}
  $("finds").textContent="Dhundh rahe hain…";
- try{const r=await tmo("https://api.mfapi.in/mf/search?q="+encodeURIComponent(q));
+ try{const r=await tmo(proxy()?proxy()+"?ms="+encodeURIComponent(q):"https://api.mfapi.in/mf/search?q="+encodeURIComponent(q));
   $("finds").innerHTML=r.length?r.slice(0,8).map(x=>`<button type="button" class="row" data-c="${x.schemeCode}" style="border-radius:8px;margin-top:6px"><b>${esc(x.schemeName)}</b></button>`).join(""):"Kuch nahi mila. Naam chhota karke try karein.";
  }catch(e){$("finds").textContent="Search nahi ho paayi ("+why(e)+"). Internet check karein."}
 };

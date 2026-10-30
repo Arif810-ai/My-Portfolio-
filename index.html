@@ -92,25 +92,29 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 </div>
 <datalist id="pl_list"></datalist>
 <div class="two">
-<label>Units / quantity<input id="f_units" type="number" inputmode="decimal" step="any"></label>
-<label>Avg buy price (₹)<input id="f_avg" type="number" inputmode="decimal" step="any"></label>
+<label><span id="t_units">Units / quantity</span><input id="f_units" type="number" inputmode="decimal" step="any"></label>
+<label><span id="t_avg">Avg buy price (₹)</span><input id="f_avg" type="number" inputmode="decimal" step="any"></label>
 </div>
 <div class="sub" style="margin-top:10px">Units pata nahi? Neeche Invested aur Current value daalein, jaise Upstox/Groww mein dikhta hai.</div>
 <div class="two">
 <label>Invested (₹)<input id="f_inv" type="number" inputmode="decimal" step="any"></label>
 <label>Current value (₹)<input id="f_cv" type="number" inputmode="decimal" step="any"></label>
 </div>
-<label>Current price / NAV (₹)<input id="f_cur" type="number" inputmode="decimal" step="any"></label>
+<label><span id="t_cur">Current price / NAV (₹)</span><input id="f_cur" type="number" inputmode="decimal" step="any"></label>
 <label>Buy date (XIRR ke liye)<input id="f_date" type="date"></label>
-<label>Auto price code (optional)<input id="f_code" placeholder="MF: scheme code · Stock: RELIANCE"></label>
+<div id="w_code">
+<label><span id="t_code">Auto price code (optional)</span><input id="f_code" placeholder="MF: scheme code · Stock: RELIANCE"></label>
 <button type="button" id="b_find" class="chip" style="margin-top:8px">MF ka code naam se dhundhein</button>
 <button type="button" id="b_sfind" class="chip" style="margin-top:8px">Stock ka ticker naam se dhundhein</button>
 <div id="finds" class="sub"></div>
+</div>
+<div id="w_sip">
 <div class="two">
 <label>SIP raashi (₹/mahina)<input id="f_sip" type="number" inputmode="decimal" step="any"></label>
 <label>SIP ki date (1-28)<input id="f_sipd" type="number" inputmode="numeric" min="1" max="28"></label>
 </div>
 <div class="sub">SIP bharne par har mahine nayi instalment apne aap judegi (sirf Mutual Fund, code ke saath).</div>
+</div>
 <div class="act">
 <button id="b_del" class="del" hidden>Delete</button>
 <button id="b_cancel">Cancel</button>
@@ -195,7 +199,7 @@ function openForm(id){
  $("dtitle").textContent=id?"Holding badlein":"Nayi holding";
  $("f_name").value=i.name||"";$("f_plat").value=i.platform||"";$("f_seg").value=i.segment||(view==="All"?"Mutual Fund":view);
  $("f_units").value=i.units??"";$("f_avg").value=i.avg??"";$("f_cur").value=i.cur??"";
- $("f_date").value=i.date||"";$("f_code").value=i.code||"";$("finds").innerHTML="";$("f_sip").value=i.sip?i.sip.amt:"";$("f_sipd").value=i.sip?i.sip.day:"";
+ $("f_date").value=i.date||"";$("f_code").value=i.code||"";$("finds").innerHTML="";$("f_sip").value=i.sip?i.sip.amt:"";$("f_sipd").value=i.sip?i.sip.day:"";applySeg();
  if(i.amt){$("f_units").value="";$("f_avg").value="";$("f_cur").value="";$("f_inv").value=i.avg;$("f_cv").value=i.cur}else{$("f_inv").value="";$("f_cv").value=""}
  $("b_del").hidden=!id;$("dlg").showModal();
 }
@@ -217,10 +221,10 @@ $("exp").onclick=async()=>{const t=JSON.stringify(items);try{await navigator.cli
 $("imp").onclick=()=>{$("r_txt").value="";$("rdlg").showModal()};
 $("r_cancel").onclick=()=>$("rdlg").close();
 $("r_ok").onclick=()=>{try{const d=JSON.parse($("r_txt").value);if(!Array.isArray(d))throw 0;items=d;save();render();$("rdlg").close()}catch(e){alert("Ye valid backup nahi hai.")}};
-const tmo=u=>{const c=new AbortController();setTimeout(()=>c.abort(),9000);return fetch(u,{signal:c.signal}).then(r=>{if(!r.ok)throw 0;return r.json()})};
+const tmo=(u,ms)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||15000);return fetch(u,{signal:c.signal}).then(r=>{if(!r.ok)throw "HTTP "+r.status;return r.json()}).finally(()=>clearTimeout(t))};
 async function getPrice(i){
- if(i.segment==="Mutual Fund"){const d=await tmo("https://api.mfapi.in/mf/"+encodeURIComponent(i.code));const n=parseFloat(d.data[0].nav);if(!(n>0))throw 0;return [n,d.data[0].date,d.data[1]?parseFloat(d.data[1].nav):0,d.data]}
- if(i.segment==="Stock/ETF"){const s=/\.(NS|BO)$/i.test(i.code)?i.code:i.code+".NS";const d=await tmo("https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(s)+"?interval=1d&range=1d");const m=d.chart.result[0].meta,n=m.regularMarketPrice;if(!(n>0))throw 0;return [n,new Date().toLocaleDateString("en-IN"),m.previousClose||m.chartPreviousClose||0]}
+ if(i.segment==="Mutual Fund"){const b="https://api.mfapi.in/mf/"+encodeURIComponent(i.code.trim()),d=await tmo(b+"/latest");const n=parseFloat(d.data[0].nav);if(!(n>0))throw "NAV nahi mila";let pv=0,h=null;try{h=(await tmo(b,30000)).data;pv=h[1]?parseFloat(h[1].nav):0}catch(e){}return [n,d.data[0].date,pv,h]}
+ if(i.segment==="Stock/ETF"){if(/\s/.test(i.code.trim()))throw "ticker galat (naam nahi, jaise RELIANCE)";const s=/\.(NS|BO)$/i.test(i.code)?i.code:i.code+".NS";const d=await tmo("https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(s)+"?interval=1d&range=1d");const m=d.chart.result[0].meta,n=m.regularMarketPrice;if(!(n>0))throw 0;return [n,new Date().toLocaleDateString("en-IN"),m.previousClose||m.chartPreviousClose||0]}
  throw 0;
 }
 let busy=false;
@@ -228,10 +232,10 @@ async function refreshPrices(){
  if(busy)return;
  const list=items.filter(i=>i.code&&(i.segment==="Mutual Fund"||(i.segment==="Stock/ETF"&&!i.amt)));
  if(!list.length){$("st").textContent="";return}
- busy=true;$("st").textContent="Prices update ho rahe hain…";let ok=0,bad=0;
- await Promise.all(list.map(async i=>{try{const [p,dt,pv,h]=await getPrice(i);if(i.amt){const inv=i.avg*i.units;i.units=i.cur/p;i.avg=inv/i.units;delete i.amt}i.cur=p;i.upd=dt;if(pv>0)i.prev=pv;if(h)applySip(i,h);ok++}catch(e){bad++}}));
+ busy=true;$("st").textContent="Prices update ho rahe hain…";let ok=0,bad=0;const errs=[],why=e=>typeof e==="string"?e:e&&e.name==="AbortError"?"timeout":e instanceof TypeError?"network/CORS block":"error";
+ await Promise.all(list.map(async i=>{try{const [p,dt,pv,h]=await getPrice(i);if(i.amt){const inv=i.avg*i.units;i.units=i.cur/p;i.avg=inv/i.units;delete i.amt}i.cur=p;i.upd=dt;if(pv>0)i.prev=pv;if(h)applySip(i,h);ok++}catch(e){bad++;errs.push(i.name+" ("+why(e)+")")}}));
  busy=false;save();render();
- $("st").textContent="Auto prices: "+ok+" update"+(bad?", "+bad+" nahi hue (purana price dikh raha hai)":"")+" · "+new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+ $("st").textContent="Auto prices: "+ok+" update"+(bad?", "+bad+" nahi hue: "+errs.join("; "):"")+" · "+new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
 }
 $("b_find").onclick=async()=>{
  const q=$("f_name").value.trim();
@@ -241,10 +245,10 @@ $("b_find").onclick=async()=>{
   $("finds").innerHTML=r.length?r.slice(0,8).map(x=>`<button type="button" class="row" data-c="${x.schemeCode}" style="border-radius:8px;margin-top:6px"><b>${esc(x.schemeName)}</b></button>`).join(""):"Kuch nahi mila. Naam chhota karke try karein.";
  }catch(e){$("finds").textContent="Search nahi ho paayi. Internet check karein."}
 };
-$("finds").onclick=e=>{const b=e.target.closest("[data-c],[data-s]");if(!b)return;if(b.dataset.c){$("f_code").value=b.dataset.c;$("f_seg").value="Mutual Fund";$("finds").textContent="Code set ho gaya: "+b.dataset.c}else{$("f_code").value=b.dataset.s;$("f_seg").value="Stock/ETF";$("finds").textContent="Ticker set ho gaya: "+b.dataset.s}};
+$("finds").onclick=e=>{const b=e.target.closest("[data-c],[data-s]");if(!b)return;if(b.dataset.c){$("f_code").value=b.dataset.c;$("f_seg").value="Mutual Fund";applySeg();$("finds").textContent="Code set ho gaya: "+b.dataset.c}else{$("f_code").value=b.dataset.s;$("f_seg").value="Stock/ETF";applySeg();$("finds").textContent="Ticker set ho gaya: "+b.dataset.s}};
 const mkSip=id=>{
  const a=parseFloat($("f_sip").value),d=Math.min(28,Math.max(1,parseInt($("f_sipd").value)||1));
- if(!(a>0))return null;
+ if(!(a>0)||$("f_seg").value!=="Mutual Fund")return null;
  const old=(items.find(x=>x.id===id)||{}).sip;
  if(old&&old.amt===a&&old.day===d)return old;
  const t=new Date(),ym=t.getFullYear()*12+t.getMonth();
@@ -274,6 +278,19 @@ $("b_sfind").onclick=async()=>{
   $("finds").innerHTML=l.length?l.map(x=>`<button type="button" class="row" data-s="${esc(x.symbol)}" style="border-radius:8px;margin-top:6px"><b>${esc(x.shortname||x.longname||x.symbol)}</b> <span class="sub">${esc(x.symbol)}</span></button>`).join(""):"Kuch nahi mila. Ticker khud likh sakte hain, jaise RELIANCE.";
  }catch(e){$("finds").textContent="Search nahi ho paayi. Ticker khud likhein, jaise RELIANCE."}
 };
+function applySeg(){
+ const g=$("f_seg").value,mf=g==="Mutual Fund",st=g==="Stock/ETF";
+ $("w_code").style.display=(mf||st)?"":"none";
+ $("b_find").style.display=mf?"":"none";
+ $("b_sfind").style.display=st?"":"none";
+ $("w_sip").style.display=mf?"":"none";
+ $("t_units").textContent=st?"Shares (quantity)":mf?"Units":"Units / quantity";
+ $("t_avg").textContent=mf?"Avg NAV (₹)":"Avg buy price (₹)";
+ $("t_cur").textContent=mf?"Current NAV (₹)":"Current price (₹)";
+ $("t_code").textContent=st?"Stock ticker (auto price)":"MF scheme code (auto NAV)";
+ $("f_code").placeholder=st?"e.g. RELIANCE":"naam se dhundhein ya code likhein";
+}
+$("f_seg").onchange=applySeg;
 $("ref").onclick=refreshPrices;
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshPrices()});
 const enc=new TextEncoder();

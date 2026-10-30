@@ -47,7 +47,7 @@ input,select{width:100%;font:inherit;padding:10px;border:1px solid var(--line);b
 .act .pri{background:var(--acc);color:var(--onacc);border-color:var(--acc);font-weight:700}
 .act .del{color:var(--dn)}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-.tools{flex-wrap:wrap}.tools button{flex:1 1 40%}
+.tools{flex-wrap:wrap}input[readonly]{opacity:.75}.tools button{flex:1 1 40%}
 #lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center}
 #lock input{max-width:220px;text-align:center;font-size:1.6rem;letter-spacing:.3em}
 #lock button{border:0;border-radius:10px;padding:12px 28px;font:inherit;font-weight:700;background:var(--acc);color:var(--onacc)}
@@ -75,6 +75,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div id="plat"></div>
 <div class="tools">
 <button id="pin">App PIN</button>
+<button id="px">Stock service link</button>
 <button id="ref">Prices refresh</button>
 <button id="exp">Backup copy</button>
 <button id="imp">Backup restore</button>
@@ -128,7 +129,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <input id="r_l" placeholder="Aakhri naam (Last name)" autocomplete="family-name">
 <div id="r_msg" class="dn" role="alert"></div>
 <button id="r_go">Shuru karein</button>
-<div class="sub" style="max-width:300px">Aapka naam aur Tracker ID app banane wale ko bheje jaate hain. Aapki holdings kahin nahi bheji jaati, wo sirf is phone mein rehti hain.</div>
+<div class="sub" id="r_note" style="max-width:300px;display:none">Aapka naam aur Tracker ID app banane wale ko bheje jaate hain. Aapki holdings kahin nahi bheji jaati, wo sirf is phone mein rehti hain.</div>
 </div>
 <div id="lock">
 <div style="font-size:1.3rem;font-weight:700">Mera Portfolio</div>
@@ -201,7 +202,7 @@ function openForm(id){
  $("f_units").value=i.units??"";$("f_avg").value=i.avg??"";$("f_cur").value=i.cur??"";
  $("f_date").value=i.date||"";$("f_code").value=i.code||"";$("finds").innerHTML="";$("f_sip").value=i.sip?i.sip.amt:"";$("f_sipd").value=i.sip?i.sip.day:"";applySeg();
  if(i.amt){$("f_units").value="";$("f_avg").value="";$("f_cur").value="";$("f_inv").value=i.avg;$("f_cv").value=i.cur}else{$("f_inv").value="";$("f_cv").value=""}
- $("b_del").hidden=!id;$("dlg").showModal();
+ syncAmt();$("b_del").hidden=!id;$("dlg").showModal();
 }
 $("add").onclick=()=>openForm(null);
 $("b_cancel").onclick=()=>$("dlg").close();
@@ -222,9 +223,11 @@ $("imp").onclick=()=>{$("r_txt").value="";$("rdlg").showModal()};
 $("r_cancel").onclick=()=>$("rdlg").close();
 $("r_ok").onclick=()=>{try{const d=JSON.parse($("r_txt").value);if(!Array.isArray(d))throw 0;items=d;save();render();$("rdlg").close()}catch(e){alert("Ye valid backup nahi hai.")}};
 const tmo=(u,ms)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||15000);return fetch(u,{signal:c.signal}).then(r=>{if(!r.ok)throw "HTTP "+r.status;return r.json()}).finally(()=>clearTimeout(t))};
+const why=e=>typeof e==="string"?e:e&&e.name==="AbortError"?"timeout":e instanceof TypeError?"network/CORS block":"error";
+const proxy=()=>{try{return(localStorage.getItem("pfproxy")||"").replace(/\/+$/,"")}catch(e){return""}};
 async function getPrice(i){
  if(i.segment==="Mutual Fund"){const b="https://api.mfapi.in/mf/"+encodeURIComponent(i.code.trim()),d=await tmo(b+"/latest");const n=parseFloat(d.data[0].nav);if(!(n>0))throw "NAV nahi mila";let pv=0,h=null;try{h=(await tmo(b,30000)).data;pv=h[1]?parseFloat(h[1].nav):0}catch(e){}return [n,d.data[0].date,pv,h]}
- if(i.segment==="Stock/ETF"){if(/\s/.test(i.code.trim()))throw "ticker galat (naam nahi, jaise RELIANCE)";const s=/\.(NS|BO)$/i.test(i.code)?i.code:i.code+".NS";const d=await tmo("https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(s)+"?interval=1d&range=1d");const m=d.chart.result[0].meta,n=m.regularMarketPrice;if(!(n>0))throw 0;return [n,new Date().toLocaleDateString("en-IN"),m.previousClose||m.chartPreviousClose||0]}
+ if(i.segment==="Stock/ETF"){if(/\s/.test(i.code.trim()))throw "ticker galat (naam nahi, jaise RELIANCE)";const s=/\.(NS|BO)$/i.test(i.code)?i.code:i.code+".NS";const d=await tmo(proxy()?proxy()+"?s="+encodeURIComponent(s):"https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(s)+"?interval=1d&range=1d");const m=d.chart.result[0].meta,n=m.regularMarketPrice;if(!(n>0))throw 0;return [n,new Date().toLocaleDateString("en-IN"),m.previousClose||m.chartPreviousClose||0]}
  throw 0;
 }
 let busy=false;
@@ -243,7 +246,7 @@ $("b_find").onclick=async()=>{
  $("finds").textContent="Dhundh rahe hain…";
  try{const r=await tmo("https://api.mfapi.in/mf/search?q="+encodeURIComponent(q));
   $("finds").innerHTML=r.length?r.slice(0,8).map(x=>`<button type="button" class="row" data-c="${x.schemeCode}" style="border-radius:8px;margin-top:6px"><b>${esc(x.schemeName)}</b></button>`).join(""):"Kuch nahi mila. Naam chhota karke try karein.";
- }catch(e){$("finds").textContent="Search nahi ho paayi. Internet check karein."}
+ }catch(e){$("finds").textContent="Search nahi ho paayi ("+why(e)+"). Internet check karein."}
 };
 $("finds").onclick=e=>{const b=e.target.closest("[data-c],[data-s]");if(!b)return;if(b.dataset.c){$("f_code").value=b.dataset.c;$("f_seg").value="Mutual Fund";applySeg();$("finds").textContent="Code set ho gaya: "+b.dataset.c}else{$("f_code").value=b.dataset.s;$("f_seg").value="Stock/ETF";applySeg();$("finds").textContent="Ticker set ho gaya: "+b.dataset.s}};
 const mkSip=id=>{
@@ -273,10 +276,10 @@ $("b_sfind").onclick=async()=>{
  const q=$("f_name").value.trim();
  if(!q){alert("Pehle upar naam likhein, jaise Reliance");return}
  $("finds").textContent="Dhundh rahe hain…";
- try{const r=await tmo("https://query1.finance.yahoo.com/v1/finance/search?q="+encodeURIComponent(q)+"&quotesCount=10&newsCount=0");
+ try{const r=await tmo(proxy()?proxy()+"?t=s&q="+encodeURIComponent(q):"https://query1.finance.yahoo.com/v1/finance/search?q="+encodeURIComponent(q)+"&quotesCount=10&newsCount=0");
   const l=(r.quotes||[]).filter(x=>/\.(NS|BO)$/.test(x.symbol||"")).slice(0,8);
   $("finds").innerHTML=l.length?l.map(x=>`<button type="button" class="row" data-s="${esc(x.symbol)}" style="border-radius:8px;margin-top:6px"><b>${esc(x.shortname||x.longname||x.symbol)}</b> <span class="sub">${esc(x.symbol)}</span></button>`).join(""):"Kuch nahi mila. Ticker khud likh sakte hain, jaise RELIANCE.";
- }catch(e){$("finds").textContent="Search nahi ho paayi. Ticker khud likhein, jaise RELIANCE."}
+ }catch(e){$("finds").textContent="Search nahi ho paayi ("+why(e)+"). "+(proxy()?"Ticker khud likhein, jaise RELIANCE.":"Browser Yahoo ko rok raha hai. Neeche 'Stock service link' jodein, ya ticker khud likhein.")}
 };
 function applySeg(){
  const g=$("f_seg").value,mf=g==="Mutual Fund",st=g==="Stock/ETF";
@@ -291,6 +294,18 @@ function applySeg(){
  $("f_code").placeholder=st?"e.g. RELIANCE":"naam se dhundhein ya code likhein";
 }
 $("f_seg").onchange=applySeg;
+function syncAmt(){
+ const u=parseFloat($("f_units").value),a=parseFloat($("f_avg").value),c=parseFloat($("f_cur").value),full=u>0&&a>0;
+ $("f_inv").readOnly=full;$("f_cv").readOnly=full;
+ if(full){$("f_inv").value=(u*a).toFixed(2);$("f_cv").value=(u*(c>0?c:a)).toFixed(2)}
+}
+["f_units","f_avg","f_cur"].forEach(k=>$(k).addEventListener("input",syncAmt));
+$("px").onclick=()=>{
+ const v=prompt("Stock service ka link paste karein (khaali chhodne par hat jayega):",proxy());
+ if(v===null)return;
+ try{v.trim()?localStorage.setItem("pfproxy",v.trim()):localStorage.removeItem("pfproxy")}catch(e){}
+ refreshPrices();
+};
 $("ref").onclick=refreshPrices;
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshPrices()});
 const enc=new TextEncoder();
@@ -318,6 +333,7 @@ $("pin").onclick=async()=>{
 };
 document.addEventListener("visibilitychange",()=>{if(document.hidden)hiddenAt=Date.now();else if(getPin()&&hiddenAt&&Date.now()-hiddenAt>60000)showLock()});
 const CFG={url:"",f:"",l:"",i:""};
+if(CFG.url)$("r_note").style.display="";
 const getUser=()=>{try{return JSON.parse(localStorage.getItem("pfuser")||"null")}catch(e){return null}};
 const putUser=u=>{try{localStorage.setItem("pfuser",JSON.stringify(u))}catch(e){}};
 function mkId(f,l){
